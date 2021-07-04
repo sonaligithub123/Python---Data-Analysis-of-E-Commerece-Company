@@ -1,0 +1,1480 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+%matplotlib inline
+
+import scipy.stats as stats
+import pandas_profiling 
+
+cust= pd.read_excel('C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/14, marketing analysis/CustomersData.xlsx')
+
+disc= pd.read_csv('C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/14, marketing analysis/Discount_Coupon.csv')
+
+marketing= pd.read_csv('C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/14, marketing analysis/Marketing_Spend.csv')
+
+sales= pd.read_csv('C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/14, marketing analysis/Online_Sales.csv')
+
+tax= pd.read_excel('C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/14, marketing analysis/Tax_amount.xlsx')
+
+cust.info()
+
+cust.head(5)
+
+disc.info()
+
+disc.head(5)
+
+marketing.info()
+
+marketing.head(5)
+
+sales.info()
+
+sales.head(5)
+
+tax.info()
+
+tax.head(5)
+
+# 1. Calculate the invoice amount or sales amount or revenue for each transcation and item level
+
+sales.isna().sum()
+
+tax.isna().sum()
+
+merge1= pd.merge(sales , tax, "inner" , on='Product_Category' )
+
+merge1.Transaction_Date = merge1.Transaction_Date.astype(str)
+
+merge1.Transaction_Date= pd.to_datetime(merge1.Transaction_Date)
+
+import calendar
+
+
+merge1['Month']= merge1.Transaction_Date.dt.month
+
+merge1['Month']= merge1['Month'].apply(lambda x: calendar.month_abbr[x])
+
+merge1.columns
+
+merge1.isna().sum()
+
+disc.isna().sum()
+
+merg2= pd.merge(merge1 , disc , how='inner' , left_on = ['Product_Category', 'Month'  ], right_on=['Product_Category ' , 'Month'])
+
+
+merg2.isna().sum()
+
+merg2.drop(columns='Product_Category ' , inplace=True )
+
+merg2
+
+merg2.isna().sum()
+
+## 1)  invoice amount = quantity X Avg Price * (1-discountpct) * (1+GST) +delivery charges 
+
+invoice_amount= ((merg2.Quantity * merg2.Avg_Price)*(1-merg2.Discount_pct)*(1+merg2.GST))+(merg2.Delivery_Charges)
+
+
+invoice_amount = np.abs(invoice_amount)
+
+invoice_amount
+
+# 2) Perform Detailed Exploratory analysis 
+
+# 2.1) Understanding how many customers acquired each month
+
+merg2.groupby("Month").CustomerID.count()
+
+monthwise = merg2.groupby("Month").CustomerID.count()
+
+monthwise= monthwise.reindex(["Jan" , "Feb" , "Mar" , "Apr" , "May" , "Jun" , "Jul", "Aug", "Sep" , "Oct", "Nov","Dec"])
+
+monthwise
+
+# 2.2) understanding retention of customers month to month basis
+
+merg2["invoice_amount"]= invoice_amount
+
+merg2.head(5)
+
+monthwise_new= pd.DataFrame(merg2.groupby([ "Month", "CustomerID"])["Transaction_ID" , "invoice_amount"].agg({"Transaction_ID": "count" ,"invoice_amount": sum }))
+
+monthwise_new
+
+
+cust.sort_values(by='Tenure_Months', ascending=False)
+
+merg3= pd.merge( cust,merg2, "inner" , on="CustomerID")
+
+merg3.head(5)
+
+merg4= merg3.groupby(['CustomerID', "Month"]).invoice_amount.sum()
+
+merg4
+
+merg4= merg4.reset_index(level="Month")
+
+merg4
+
+jan1= merg4[merg4.Month=="Jan"] #| 215 unique Customers transcated in Jan 2019
+
+feb1= merg4[merg4.Month=="Feb" ] # 109 unique Customers transcated in Feb 2019
+
+pd.merge(jan1, feb1 , "inner" , on="CustomerID").count() # 13 customers from Jan were retained in month of Feb . Rest were different customers 
+
+Mar1= merg4[merg4.Month=="Mar"]
+
+pd.merge( feb1 ,Mar1, "inner" , on="CustomerID").count() # 11 customers from Feb also purchased in month of March . 
+
+Apr1= merg4[merg4.Month=="Apr"]
+
+pd.merge( Mar1, Apr1, "inner" , on="CustomerID").count() # 24 customers from March also purchased in month of April
+
+May1= merg4[merg4.Month=="May"]
+
+pd.merge(  Apr1, May1, "inner" , on="CustomerID").count() # 25 customers from April also purchased in month of May
+
+Jun1= merg4[merg4.Month=="Jun"]
+
+pd.merge(  May1, Jun1, "inner" , on="CustomerID").count() # 37 customers from May also purchased in month ofJune
+
+Jul1= merg4[merg4.Month=="Jul"]
+
+pd.merge(  Jun1,Jul1, "inner" , on="CustomerID").count() # 58 customers from June also purchased in month of July 
+
+Aug1= merg4[merg4.Month=="Aug"]
+
+pd.merge(  Jul1, Aug1,"inner" , on="CustomerID").count() # 64 customers from Julyalso purchased in month of Aug
+
+Sep1= merg4[merg4.Month=="Sep"]
+
+pd.merge(  Aug1, Sep1, "inner" , on="CustomerID").count() # 44 customers from August also purchased in month of Sep
+
+Oct1= merg4[merg4.Month=="Oct"]
+
+pd.merge( Sep1, Oct1, "inner" , on="CustomerID").count() # 29 customers from Sep also purchased in month of Oct
+
+Nov1=  merg4[merg4.Month=="Nov"]
+
+pd.merge(  Oct1, Nov1, "inner" , on="CustomerID").count() #31 customers from Oct also purchased in month of Nov
+
+Dec1=  merg4[merg4.Month=="Dec"]
+
+pd.merge(  Nov1,Dec1, "inner" , on="CustomerID").count() # 28 customers from Nov also purchased in month of Dec
+
+### the above shows month to month customer retention in year 2019 starting from /jan till Dec 2019. 
+
+## 2.3) how the revenues from existing / new customers month to month basis 
+
+jan1.invoice_amount.sum() 
+
+# total revenue in month of Jan by all clients i.e. at the begiining of year 2019 .
+
+### user defined function built to check total revenue month by month and distribution of revenue from exisitinga nd new clients
+
+
+def retention_revenue(x, y): 
+    
+    
+    p= round(pd.merge( x ,y, "inner" , on="CustomerID")['invoice_amount_y'].sum(),2) 
+    
+    q= round(y.invoice_amount.sum(),2)
+    
+    r= round(q-p,2)
+    
+    print ("Total_Revenue:" , q, 
+           " ; " "Existing_client_Revenue:" ,p ," ; ",
+           "New clients_revenue :", r)
+    
+    
+    
+
+retention_revenue(jan1, feb1) # from Jan to Feb revnue analysis 
+
+retention_revenue(feb1, Mar1)# from Feb to March  revnue analysis 
+
+retention_revenue( Mar1 , Apr1) # from March to April month  revnue analysis 
+
+retention_revenue( Apr1 , May1)# from April to May month revnue analysis 
+
+retention_revenue( May1, Jun1)# from May to June month revnue analysis 
+
+retention_revenue(  Jun1, Jul1)# from June to July month  revnue analysis 
+
+retention_revenue(  Jul1, Aug1)  # from July to aug revnue analysis 
+
+retention_revenue(  Aug1, Sep1)  # from Aug to Sep revnue analysis 
+
+retention_revenue(   Sep1, Oct1)  # from Sep to Oct revnue analysis 
+
+retention_revenue(   Oct1, Nov1)# from Oct to Nov revnue analysis 
+
+retention_revenue( Nov1, Dec1)# from Nov to Dec i.e last month 2019  revnue analysis 
+
+## 2.4 How the discount playing role in revenues ?
+
+merg3.Discount_pct.unique()
+
+merg3[merg3.Discount_pct==10].invoice_amount.sum()
+
+
+merg3[merg3.Discount_pct==20 ].invoice_amount.sum()
+
+merg3[merg3.Discount_pct==30 ].invoice_amount.sum()
+
+merg3[merg3.Discount_pct==10].invoice_amount.sum()/merg3.invoice_amount.sum()*100
+
+merg3[merg3.Discount_pct==20 ].invoice_amount.sum()/merg3.invoice_amount.sum()*100
+
+merg3[merg3.Discount_pct==30 ].invoice_amount.sum()/merg3.invoice_amount.sum()*100
+
+###### As per above analysis , its clear that higher the discount , higher is the revenue
+# 10 % discount = 16% of total invoice amount
+# 20 % discount = 32 % of total invoice amount
+# 30 % discount = 51% of total invoice amount
+
+### 2.5 Analyse KPIs like Revenue,No of orders, avg order value, no of customers(existing and new), quantity by category by month by week and by day,
+
+##### 1) Revenue by Catagory, by month, by week, by day
+
+merg3.groupby("Month").invoice_amount.sum() # Revenue by month 
+
+merg3.groupby("Product_Category").invoice_amount.sum() # Revenue by catagory
+
+merg3["week"]= merg3.Transaction_Date.dt.strftime('%U') # converting dates into week of year 
+
+merg3.groupby("week").invoice_amount.sum() # Revenue by week of year 
+
+merg3.groupby(merg3.Transaction_Date.dt.day).invoice_amount.sum() # revenue by day of year
+
+###  quantity by category, month , week and day
+
+merg3.groupby('Product_Category').Quantity.count() # Quantity  by product category wise 
+
+merg3.groupby("Month").Quantity.count() # quantity  by month 
+
+merg3.groupby("week").Quantity.count() # quantity   by week of the year
+
+merg3.groupby(merg3.Transaction_Date.dt.day).Quantity.count() # quantity   by day of the year
+
+### Average Order value  by category, month , week and day
+
+merg3.groupby("Product_Category").Avg_Price.mean() #  avg order value by category
+
+merg3.groupby("Month").Avg_Price.mean()  #  avg order value by month
+
+merg3.groupby("week").Avg_Price.mean() #  avg order value by week
+
+merg3.groupby(merg3.Transaction_Date.dt.day).Avg_Price.mean() # avg order by day 
+
+###  no of orders / Transcations , by month , by week and by day 
+
+merg3.groupby('Product_Category').Transaction_ID.count() # No Of orders by product category 
+
+merg3.groupby("Month").Transaction_ID.count() # No Of orders by Month 
+
+merg3.groupby("week").Transaction_ID.count() # No Of orders by week 
+
+merg3.groupby(merg3.Transaction_Date.dt.day).Transaction_ID.count() # No Of orders by day of year
+
+### Existing and New customers by product category, by month, by week and by day 
+
+existing_cust= merg3[merg3.Tenure_Months >=12]
+
+new_cust=merg3[merg3.Tenure_Months <12]
+
+existing_cust.groupby('Product_Category').count()["CustomerID"]  # existing customers by product cat
+
+existing_cust.groupby('Month').count()["CustomerID"]  # existing customers by Month 
+
+
+existing_cust.groupby('week').count()["CustomerID"]   # existing customers by week
+
+
+existing_cust.groupby(merg3.Transaction_Date.dt.day).count()["CustomerID"]  # existing customers by day of year
+
+
+new_cust.groupby('Product_Category').count()["CustomerID"] # New  customers by product category 
+
+new_cust.groupby('Month').count()["CustomerID"]# New  customers by month 
+
+new_cust.groupby('week').count()["CustomerID"]# New  customers by week
+
+new_cust.groupby(merg3.Transaction_Date.dt.day).count()["CustomerID"]# New  customers by day
+
+## 2.6) understand trend and seasonlity of Sales by category, Location, Month etc 
+
+##### 2.6.1) understand trend and seasonlity of Sales by category 
+
+data1=merg3.loc[: , ["Transaction_Date" , "Product_Category","invoice_amount"]]
+
+data2= data1.groupby(["Product_Category", 'Transaction_Date'])[ 'invoice_amount'].sum()
+
+data2= pd.DataFrame(data2)
+
+data2= data2.reset_index(level="Product_Category")
+
+data2.drop(columns="Product_Category" , inplace=True)
+
+data2# timeseries data grouped on product category 
+
+data5= data2[~data2.index.duplicated()] # remove duplicated Index)
+
+data5.plot()
+
+from statsmodels.tsa.seasonal import seasonal_decompose
+
+decompose_productcate = seasonal_decompose(data5.asfreq("D"), model='multiplicative', two_sided=False, extrapolate_trend=4)
+
+decompose_productcate.plot() # There is trend and seasonality both present in given data which is based on Product category 
+
+
+decompose_data = pd.concat([decompose_productcate.trend, decompose_productcate.seasonal, decompose_productcate.resid, decompose_productcate.observed],axis=1)
+decompose_data.columns = ['Trend', 'SI', "Irregular", "Actual"]
+
+decompose_data
+
+##### 2.6.2) understand trend and Seasonlity by Location 
+
+data_location=merg3.loc[: , ["Transaction_Date" , "Location","invoice_amount"]]
+
+data_locationd2= data_location.groupby(["Location", 'Transaction_Date'])[ 'invoice_amount'].sum()
+
+
+data_locationd2=pd.DataFrame(data_locationd2)
+
+data_locationd2= data_locationd2.reset_index(level="Location")
+
+data_locationd2.drop(columns="Location" , inplace=True)
+
+data_locationd2= data_locationd2[~data_locationd2.index.duplicated()] # remove duplicated Index)
+
+data_locationd2.plot()
+
+decompose_location = seasonal_decompose(data_locationd2.asfreq("D"), model='multiplicative', two_sided=False, extrapolate_trend=4)
+
+decompose_location.plot() # There is trend and seasonality both present in given data which is based on Location
+
+decompose_location_data = pd.concat([decompose_location.trend, decompose_location.seasonal, decompose_location.resid, decompose_location.observed],axis=1)
+decompose_location_data.columns = ['Trend', 'SI', "Irregular", "Actual"]
+
+decompose_location_data
+
+###### 2.6.3) understand trend and Seasonlity by Month 
+
+data_monthwise =merg3.loc[: , ["Transaction_Date" , "Month","invoice_amount"]]
+
+data_monthwise= data_monthwise.groupby(["Month", 'Transaction_Date'])[ 'invoice_amount'].sum()
+
+data_monthwise=data_monthwise.reset_index(level="Month")
+
+data_monthwise.drop(columns="Month", inplace=True)
+
+data_monthwise= data_monthwise[~data_monthwise.index.duplicated()] # remove duplicated Index)
+
+data_monthwise.plot()
+
+decompose_monthwise = seasonal_decompose(data_monthwise.asfreq("D"), model='multiplicative', two_sided=False, extrapolate_trend=4)
+
+decompose_monthwise.plot()  # There is trend and seasonality both present in given data which is based on Month 
+
+decompose_monthwise_data = pd.concat([decompose_monthwise.trend, decompose_monthwise.seasonal, decompose_monthwise.resid, decompose_monthwise.observed],axis=1)
+decompose_monthwise_data.columns = ['Trend', 'SI', "Irregular", "Actual"]
+
+decompose_monthwise_data
+
+### We have analysed trends and seasonality in all above data based on Product category, month and location 
+
+# 2.7) How number order varies and sales with different days ?
+
+merg3.groupby(merg3.Transaction_Date).Transaction_ID.count() # NO OF ORDERS ON DIFF DAYS IN YEAR
+
+plt.figure(figsize=(20, 20))
+plt.plot(merg3.groupby(merg3.Transaction_Date).Transaction_ID.count())
+plt.xlabel('days')
+plt.ylabel('NO OF ORDERS')
+
+merg3.groupby(merg3.Transaction_Date).invoice_amount.sum() # SALES ON DIFF DAYS OF YEAR
+
+plt.figure(figsize=(20, 20))
+plt.plot(merg3.groupby(merg3.Transaction_Date).invoice_amount.sum())
+plt.xlabel('days')
+plt.ylabel('SALES AMOUNT ')
+
+## 2.8) Calculate revenue, marketing spend, % of marketing spend out of revenue , Tax, % of delivery charges by month 
+
+marketing.Date =pd.to_datetime(marketing.Date)
+
+# merging marketing merg2 and marketing 
+marketing
+
+merge_marketing = pd.merge(merg2, marketing , "inner" , left_on="Transaction_Date" , right_on="Date")
+
+merge_marketing.drop(columns= "Date" , inplace=True)
+
+merge_marketing.head(5)
+
+##### Marketing spend by month
+
+total_marketing= merge_marketing.Offline_Spend+merge_marketing.Online_Spend
+
+merge_marketing["total_marketing"]=total_marketing
+
+merge_marketing.groupby("Month").total_marketing.sum() 
+
+##### % of marketing spend out of revenue by month
+
+(merge_marketing.total_marketing/merge_marketing.invoice_amount)*100 # monthwise % of marketing spend out of invoice/revenue amount
+
+###### tax by month
+
+tax= abs((merge_marketing.Quantity*merge_marketing.Avg_Price)*(1-merge_marketing.Discount_pct)*(merge_marketing.GST))
+
+merge_marketing["tax"] = tax
+
+merge_marketing.groupby("Month").tax.sum() # tax amount monthwise 
+
+## % of delivery charges by month
+
+delivery_monthwise = merge_marketing.groupby("Month").Delivery_Charges.sum()
+
+invoice_monthwise = merge_marketing.groupby("Month").invoice_amount.sum()
+
+(delivery_monthwise/invoice_monthwise)*100  ## delivery charges % of revenue amount every month
+
+#### 2.9) how  marketing spend is impacting on revenue ?
+
+new_data = merge_marketing.groupby("Month")["invoice_amount" , "total_marketing"].sum()
+
+new_data.invoice_amount = round(new_data.invoice_amount, 2)
+
+new_data.total_marketing = round(new_data.total_marketing, 2)
+
+new_data[new_data.total_marketing <  new_data.total_marketing.mean()]
+
+new_data[new_data.total_marketing <  new_data.total_marketing.mean()].invoice_amount.sum()
+
+new_data[new_data.total_marketing <  new_data.total_marketing.mean()].invoice_amount.sum()/new_data.invoice_amount.sum()
+
+new_data[new_data.total_marketing >= new_data.total_marketing.mean()]
+
+new_data[new_data.total_marketing >= new_data.total_marketing.mean()].invoice_amount.sum()
+
+new_data[new_data.total_marketing >= new_data.total_marketing.mean()].invoice_amount.sum()/new_data.invoice_amount.sum()
+
+new_data.sort_values(by="invoice_amount", ascending=False)
+
+# Dec has highest marketing spend which has resulted in highest invoice or revenue amount 
+# however thats not case for all months . 
+# 59% of total revenue is achieved when marketing spend is less than avrage marketing spend
+# 40% of total revenue is achieved when marketing spens is morethan average makrting spend
+
+## 2.10) which product appeared highest in transcations ?
+
+sales.Product_Category.mode()   # apparel is highest appearing product cat in all transcations 
+          
+
+## 2.11)which product was purchased mostly based on quantity?
+
+quantitywise= sales.groupby("Product_Category").Quantity.count()
+
+pd.DataFrame(quantitywise).sort_values(by="Quantity", ascending=False) # appearl was mostly purchased wigh higest quantity
+
+
+####
+
+## ##  3. Performing customer segmentation 
+ 
+
+### Heuristic Segmentation - (Value based RFM)- divide customers into Premium, gold, silver, standard customers and define startegy for the same 
+
+merg3.head(5)
+
+data2= merg3.loc[:, ["CustomerID" , "Transaction_ID", "Transaction_Date" , "invoice_amount"]]
+
+series= data2.Transaction_Date.apply(lambda x:pd.to_datetime("2019-12-31")-x)
+
+series1= series.astype(str).str.replace("days" , "").astype(int)
+
+data2["series1"] = series1
+
+##  converting data into RFM 
+new_data= data2.groupby("CustomerID")[["series1" , "Transaction_ID" , "invoice_amount"]].agg({"series1":min , "Transaction_ID": "count" , "invoice_amount": sum})
+
+new_data.rename(columns={'series1': 'recency', 
+                         'Transaction_ID': 'frequency', 
+                         'invoice_amount': 'monetary'}, inplace=True)
+
+new_data
+
+new_data.isna().sum()  # no mssing in data 
+
+# creating declies based on monetary / invoice amount generated by customers each
+
+new_data['Deciles'] = pd.qcut(new_data.monetary, 10, labels=False)
+
+new_data.Deciles.value_counts()
+
+new_data.groupby('Deciles').agg(np.mean)['monetary'] # finding avg invoice amount from each decile 
+
+#profiling
+# Key performace variable selection
+col_kpi=['monetary','recency','frequency']
+
+profiling_output= new_data.groupby(['Deciles']).apply(lambda x: x[col_kpi].mean()).T
+
+profiling_output
+
+quantiles = new_data[['frequency','monetary','recency' ]].quantile(q=[0.33,0.67])
+quantiles
+
+# RFM segementation of customers 
+
+new_data['r_seg'] = np.where(new_data.recency<=78, 'Active', np.where(new_data.recency<=187.89, 'At Risk', 'Churn'))
+
+new_data['f_seg'] = np.where(new_data.frequency<=13, 1, np.where(new_data.frequency<=35, 2, 3))
+new_data['m_seg'] = np.where(new_data.monetary<=17165.156632, 1, np.where(new_data.monetary<=61641.148699, 2, 3))
+
+new_data
+
+new_data['fm_seg'] = np.where(((new_data.f_seg == 3) & (new_data.m_seg ==3)) , 'Premium',
+                          np.where((((new_data.f_seg == 3) & (new_data.m_seg ==2)) | ((new_data.f_seg == 2) & (new_data.m_seg ==3))) , 'Gold',
+                          np.where((((new_data.f_seg == 1) & (new_data.m_seg ==3)) | ((new_data.f_seg == 3) & (new_data.m_seg ==1)) | ((new_data.f_seg == 2) & (new_data.m_seg ==2))), 'Silver', 'Standard' )))
+
+new_data
+
+# Lets begin hueristic segmentaion of clients based on above derived paramters of RFM
+
+new_data[(new_data.r_seg=='Active') & (new_data.fm_seg == 'Premium')] # premium and active cust
+
+### segmenation 1) : premium and active customers 
+#  we have 183 such premium customers who are active and giving maximum business. 
+# strategy :::: we can cross sell and upsell them different products and maximise revenues
+
+
+
+# Premium and at risk 
+new_data[(new_data.r_seg=='At Risk') & (new_data.fm_seg == 'Premium')] # premium but at risk
+
+#### segmenation 2) : premium but at risk customers whose recency has been not so good
+# We have 120 such customers who did good businss in past but not much active now 
+# strategy : we can contact them and send them attractive promotions to get them back on business . 
+
+new_data[(new_data.r_seg=='Churn') & (new_data.fm_seg == 'Premium')] # premium but to be churned out 
+
+##  Premium but churn customers 
+# segmenation 3) : premium and churned customers whose recency is extremely poor.
+# We have 75 such customers who did good businss in past but not much active now
+# strategy : we can strategise plan to win them back and do more aggressive campeign . such as giving them more disocunts for doing business again 
+# also start mofe frequent communication with them to keep in touch so that they dont churn out completely 
+
+
+new_data[(new_data.r_seg=='Active') & ((new_data.fm_seg == 'Gold') | (new_data.fm_seg == 'Silver'))] # Gold /silver and active cust
+
+#### We have 176  such Gold or silver customers who have been active too 
+# strategy ::: We need to push them with more discount offers so that they purchase more and become premium cust
+
+
+#################################################################################################################################
+
+################################################################################################################################
+
+# Second methos of segmentation - Scientific using K means . Understnd profiles and define strategy
+
+%matplotlib inline
+plt.rcParams['figure.figsize'] = 10, 7.5
+plt.rcParams['axes.grid'] = True
+
+from matplotlib.backends.backend_pdf import PdfPages
+
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.decomposition import PCA  
+
+final_merge= pd.merge( cust ,merge_marketing , "inner" , on="CustomerID")
+
+final_merge.columns
+
+final_merge.info()
+
+final_merge.apply(lambda x:x.nunique())
+
+pandas_profiling.ProfileReport(final_merge)
+
+# lest drop unnecessary variables 
+# Product SKU and Product description have high cordinality:  (1135 and 395) resepctively 
+
+
+final_merge.drop(columns=["Product_SKU" , "Product_Description"] , inplace=True)
+
+final_merge
+
+
+final_merge.isna().sum()
+
+final_merge.info()
+
+final_merge.drop(columns=["Transaction_Date" , "Coupon_Code"] , inplace=True) # also removing transcation date as we have month which is derived from date.variable from transcation date and then removing copon code which is 45, high cordinality )
+
+# lets convert categorical into dummy variables , so that all variables are turned into numeric 
+
+final_merge= pd.get_dummies(final_merge, columns=["Gender", "Location" , "Product_Category" , "Coupon_Status" , "Month" ], drop_first=True) #one hot encoding
+
+final_merge.info()  # All Variables converted into numeric columns 
+
+# Now lets apply outlier and misisng on data 
+
+
+#Handling Outliers 
+def outlier_capping(x):
+    #x = x.clip_upper(x.quantile(0.99))
+    #x = x.clip_lower(x.quantile(0.01))
+    x = x.clip(lower=x.quantile(0.01), upper=x.quantile(0.99))
+    return x
+
+final_merge=final_merge.apply(lambda x: outlier_capping(x))
+
+#Handling missings on data treated with outliers already 
+def Missing_imputation(x):
+    x = x.fillna(x.mean())
+    return x
+
+final_merge=final_merge.apply(lambda x: Missing_imputation(x))
+
+# K Means application 
+
+#### # step 1) standardise data 
+# step 2) feature reduction using PCA/ VIf/ corrlation matrix etc 
+
+# step 3) Apply K means on train data 
+# step 4) check model Accuracy using metrics ( SC score, f value or intertia, distribution of data within segment etc )
+# step 5) Apply K means model to predict segmentation on test data 
+
+# data standardisation 
+sc= StandardScaler()
+
+sc1 = sc.fit(final_merge)
+
+standardised_finalmerge = sc1.transform(final_merge)
+
+standardised_finalmerge = pd.DataFrame(standardised_finalmerge, columns = final_merge.columns)
+
+standardised_finalmerge
+
+#### step 2 : Reduceing the features/ variables for segmentation - #PCA (Princicpal Component analysis)
+
+
+pca_model = PCA(n_components=46)
+
+pca_model = pca_model.fit(standardised_finalmerge)
+
+pca_model.explained_variance_   # eigen values 
+
+pca_model.explained_variance_ratio_  # eigen value ratio
+
+np.cumsum(pca_model.explained_variance_ratio_)  # cumultaive sm of varaince ratio  ( assuming  cut off as 80% total to chose no of variables )
+
+# first 22 variables cumulatively total up to 79 % of variance in total 
+# so lets chose first 22  variables 
+
+pca_model = PCA(n_components=22)
+pca_model.fit(standardised_finalmerge)
+
+pca_model.explained_variance_
+
+pca_model.explained_variance_ratio_
+
+sum(pca_model.explained_variance_ratio_)
+
+# 79% of total variance in data is achieved by above 22 variables. 
+
+# convert the above arrays into dataframe and name the columns as PCS finalised 
+
+pcs= pd.DataFrame((pca_model.transform(standardised_finalmerge)), columns=["pc1","pc2","pc3","pc4","pc5","pc6","pc7", "pc8", "pc9", "pc10", "pc11" , "pc12" , "pc13" , "pc14", "pc15" , "pc16","pc17","pc18","pc19","pc20","pc21" , "pc22"])
+
+pcs
+
+#### calculate factor loadings - to get original variables instead of pc variables # this can be done using factor loading model 
+
+
+loading = pd.DataFrame((pca_model.components_.T*np.sqrt(pca_model.explained_variance_)).T , columns=standardised_finalmerge.columns).T
+
+loading.columns =[pcs.columns]
+
+loading
+
+loading.to_csv("loadings1.csv")
+
+# based on studying loading.csv file in excel, we segragate Pcs sorted from large to small . and pick up largest 2 variables from each PCs
+
+#PCA can be used for any type of business problem (regressin, classificaiton, segmentation)
+selected_vars = [ 'CustomerID', 'Tenure_Months', 'Transaction_ID', 'total_marketing' ,'Discount_pct','Month_Jan','Quantity',
+                'Delivery_Charges', 'GST' ,'Product_Category_Office','Location_New York','Coupon_Status_Not Used',
+                 'Gender_M','Month_Sep', 'Location_Washington DC'  ,'Month_Aug', 'Location_New Jersey' ,'Product_Category_Apparel',
+'Month_Mar' ,'Month_Jul', 'Month_Feb','Month_Nov' ,'Product_Category_Bags', 'Product_Category_Lifestyle' ,'Month_Jun' ,'Product_Category_Waze']
+
+
+
+len(selected_vars) # 25 selected variables 
+
+final_input_segmentation = standardised_finalmerge[selected_vars]   #variable reduction
+
+final_input_segmentation
+
+#### step 3 : applying K means model on data for clustering
+
+km_3 = KMeans(n_clusters=3, random_state=123).fit(final_input_segmentation)
+km_4 = KMeans(n_clusters=4, random_state=123).fit(final_input_segmentation)
+km_5 = KMeans(n_clusters=5, random_state=123).fit(final_input_segmentation)
+km_6 = KMeans(n_clusters=6, random_state=123).fit(final_input_segmentation)
+km_7 = KMeans(n_clusters=7, random_state=123).fit(final_input_segmentation)
+km_8 = KMeans(n_clusters=8, random_state=123).fit(final_input_segmentation)
+
+
+final_merge['cluster_3'] = km_3.labels_
+final_merge['cluster_4'] = km_4.labels_
+
+final_merge['cluster_5'] = km_5.labels_
+final_merge['cluster_6'] = km_6.labels_
+final_merge['cluster_7'] = km_7.labels_
+final_merge['cluster_8'] = km_8.labels_
+
+final_merge.info()
+
+#Choosing best solution (optimal solution) - Identifying best value of K
+#1. Metrics	
+#    a. Silhoutte coeficient	between -1 & 1	
+        #		Closer to 1, segmentation is good	
+        #		Closer to-1, segmentation is bad	
+#	b. Pseudo F-value	 ( intertia value i.e value of sum of error )
+
+#2. Profiling of segments			
+#3. Best practices			
+#	Segment distribution	4%-40%	
+#	Strategy can be implementable or not	
+
+#### accuracy metrics 1) checking sc score (metrics 2 SC score : if close to 1 , good and closer to -1 bad) this is another metrcis to check which km model is good 
+
+# calculate SC for K=3 through K=12
+k_range = range(3, 9)
+scores = []
+for k in k_range:
+    km = KMeans(n_clusters=k, random_state=123)
+    km.fit(final_input_segmentation)
+    scores.append(silhouette_score(final_input_segmentation, km.labels_))
+
+
+scores  # Based on SC score cluster 8 has score closer to 1 comapred to others.
+
+# plot the results
+plt.plot(k_range, scores)
+plt.xlabel('Number of clusters')
+plt.ylabel('Silhouette Coefficient')
+plt.grid(True)
+
+#based on sc score, the solution K=7 and k=8 looks good
+
+#### Accuracy Metrics 2) another metrics is to check segment  distribution
+
+
+
+
+
+pd.Series(km_3.labels_).value_counts()/ sum(pd.Series(km_3.labels_).value_counts()) # how its internally distributed in percentage wise
+
+pd.Series(km_4.labels_).value_counts()/ sum(pd.Series(km_4.labels_).value_counts()) # how its internally distributed in percentage wise 
+
+pd.Series(km_5.labels_).value_counts()/ sum(pd.Series(km_4.labels_).value_counts()) # how its internally distributed in percentage wise 
+
+pd.Series(km_6.labels_).value_counts()/ sum(pd.Series(km_4.labels_).value_counts()) # how its internally distributed in percentage wise 
+
+pd.Series(km_7.labels_).value_counts()/ sum(pd.Series(km_4.labels_).value_counts()) # how its internally distributed in percentage wise 
+
+pd.Series(km_8.labels_).value_counts()/ sum(pd.Series(km_4.labels_).value_counts()) # how its internally distributed in percentage wise 
+
+# based on distribution percentage above , cluster 3, cluster 4, cluster 5, cluster 6, cluster 7 have more than 40% in one sub group. 
+#  Cluster 8 has distribution 4-40 percent as desired range 
+# as per SC score, Inertia(f value) and also distribution , cluster 8 or cluster 7 look appropriate
+# Profiling will be another method to cross check the same 
+
+#### Accuracy Metrics 3 -- Profiling of clusters 
+
+
+size=pd.concat([pd.Series(final_merge.cluster_3.size), pd.Series.sort_index(final_merge.cluster_3.value_counts()), pd.Series.sort_index(final_merge.cluster_4.value_counts()),
+           pd.Series.sort_index(final_merge.cluster_5.value_counts()), pd.Series.sort_index(final_merge.cluster_6.value_counts()),
+           pd.Series.sort_index(final_merge.cluster_7.value_counts()), pd.Series.sort_index(final_merge.cluster_8.value_counts())])
+
+size
+
+segsize= pd.DataFrame(size , columns=["segsize"])
+
+segpct = pd.DataFrame(size/final_merge.cluster_3.size ,columns=["segpct"])
+
+pd.concat([segsize.T , segpct.T] , axis=0)
+
+final_merge.apply(np.mean).T
+
+# Mean value gives a good indication of the distribution of data. So we are finding mean value for each variable for each cluster
+Profling_output = pd.concat([final_merge.apply(lambda x: x.mean()).T, final_merge.groupby('cluster_3').apply(lambda x: x.mean()).T, final_merge.groupby('cluster_4').apply(lambda x: x.mean()).T,
+          final_merge.groupby('cluster_5').apply(lambda x: x.mean()).T, final_merge.groupby('cluster_6').apply(lambda x: x.mean()).T,
+          final_merge.groupby('cluster_7').apply(lambda x: x.mean()).T, final_merge.groupby('cluster_8').apply(lambda x: x.mean()).T], axis=1)
+
+
+Profling_output
+
+Profling_outputfinal= pd.concat([segpct.T, segsize.T , Profling_output], axis=0)
+
+Profling_outputfinal
+
+Profling_outputfinal.columns = ['Overall', 'KM3_1', 'KM3_2', 'KM3_3',
+                                'KM4_1', 'KM4_2', 'KM4_3', 'KM4_4',
+                                'KM5_1', 'KM5_2', 'KM5_3', 'KM5_4', 'KM5_5',
+                                'KM6_1', 'KM6_2', 'KM6_3', 'KM6_4', 'KM6_5','KM6_6',
+                                'KM7_1', 'KM7_2', 'KM7_3', 'KM7_4', 'KM7_5','KM7_6','KM7_7',
+                                'KM8_1', 'KM8_2', 'KM8_3', 'KM8_4', 'KM8_5','KM8_6','KM8_7','KM8_8']
+
+
+Profling_outputfinal
+
+# analysing the above table in excel with conditional formatting 
+Profling_outputfinal.to_excel("profiling_outputfinal.xlsx")
+
+# Based on analysing of above profiling output, its suggested that KM7 Or KM 8 fits good for segmentation as they have better distinction than other clusters 
+
+#### Accuracy Metrics 4) Check Cluster error 
+
+# ELBOW ANALYSIS TO CHECK CLUSTER ERROR 
+cluster_range = range( 3, 12 )
+cluster_errors = []
+
+for num_clusters in cluster_range:
+    clusters = KMeans( num_clusters )
+    clusters.fit( standardised_finalmerge )
+    cluster_errors.append( clusters.inertia_ )
+
+# lets do elbow analysis in plot graph
+
+
+# allow plots to appear in the notebook
+
+clusters_df = pd.DataFrame( { "num_clusters":cluster_range, "cluster_errors": cluster_errors } )
+
+clusters_df[0:15]
+
+%matplotlib inline
+import matplotlib.pyplot as plt
+plt.figure(figsize=(12,6))
+plt.plot( clusters_df.num_clusters, clusters_df.cluster_errors, marker = "o" )
+
+# The error slope reduces after Km 8/ Km9 
+# We can consider Km 8 to be ideal cluster segmentation .( there is no final / perfect accurate cluster segmenation in K means as its overall analysis of all different ,metrics above)
+
+final_merge.drop(columns=['cluster_3', 'cluster_4', 'cluster_5', 'cluster_6',
+       'cluster_7'] , inplace=True)
+
+final_merge.head(5) 
+
+# TO CONCLUDE , WE DIVIDED ABOVE DATA INTO CLUSTER 8 SEGMENTATION USING K MEANS SCIENTIFIC MODEL
+
+#############################################################################################################################
+
+# 4) PREDICTING CUSTOMER LIFETIME VALUE (LOW VALUE/ MEDIUM VALUE/ HIGH VALUE) 
+## 1) DEFINE DEPENDENT VARIABLE WITH CATEGORIES AS LOW/MEDIUM/HIGH VALUE BASED ON REVENUE 
+## 2) PERFORM CLASSIFICATION MODEL 
+
+data_LTV= pd.merge( cust ,merge_marketing , "inner" , on="CustomerID")
+
+data_LTV.info()
+
+data_LTV.invoice_amount.quantile([0.33,0.66])
+
+# creating y Or target variable based on invocie amount or revenue generated by each customers 
+# we will create deciles and then based on deciles create derived Y variable = Lifetime_value 
+
+data_LTV['Deciles'] = pd.qcut(data_LTV.invoice_amount, 3, labels=False)
+
+data_LTV.Deciles.unique()
+
+pd.Series(np.where(data_LTV.Deciles==2 , "high" , np.where(data_LTV.Deciles==1 , "medium" , "low")))
+
+data_LTV["Lifetime_value"] =pd.Series(np.where(data_LTV.Deciles==2 , "high" , np.where(data_LTV.Deciles==1 , "medium" , "low")))
+
+data_LTV.columns # 
+
+data_LTV.apply(lambda x:x.nunique())
+
+
+# We can drop all below variables 
+#Product_SKU             1135 (high cordinality)
+# Product_Description      395 (high cordinality)
+# Coupon_Code               45 (high cordinality)
+# CustomerID                    (uniue and primary)
+# Transaction_ID                  (uniue and primary)
+# Transaction_Date                (date to be removed as Month is already derived from date)
+# Deciles                         (deciles not required as it was used to create target variable - Lifetime_value )
+
+data_LTV.drop(columns=["Product_SKU", "Product_Description", 'Coupon_Code' , "CustomerID", "Transaction_ID", "Transaction_Date", 'Deciles'], inplace=True)
+
+data_LTV.info()
+
+data_LTV_cat = data_LTV.select_dtypes("object")
+
+data_LTV_numeric = data_LTV.select_dtypes(["int64" , "float64"])
+
+# apply outliers  on numeric data 
+#Handling Outliers 
+def outlier_capping(x):
+    #x = x.clip_upper(x.quantile(0.99))
+    #x = x.clip_lower(x.quantile(0.01))
+    x = x.clip(lower=x.quantile(0.01), upper=x.quantile(0.99))
+    return x
+
+data_LTV_numeric=data_LTV_numeric.apply(lambda x: outlier_capping(x))
+
+#Handling missings on numeric data 
+def Missing_imputation(x):
+    x = x.fillna(x.mean())
+    return x
+data_LTV_numeric=data_LTV_numeric.apply(lambda x: Missing_imputation(x))
+
+# handling missings on categorical data 
+def Missing_imputation2(x):
+    x = x.fillna(x.mode())
+    return x
+data_LTV_cat=data_LTV_cat.apply(lambda x: Missing_imputation2(x))
+
+# creating dummies for categorcal 
+
+data_LTV_cat = pd.get_dummies(data_LTV_cat , columns=[ 'Gender' , 'Location', 'Product_Category'  , 'Coupon_Status' , 'Month'], drop_first=True )
+
+y = data_LTV_cat.Lifetime_value
+
+data_LTV_cat.drop(columns='Lifetime_value'  , inplace=True)
+
+x= pd.concat([data_LTV_cat , data_LTV_numeric], axis=1)
+
+x
+
+#Modules related to split the data & gridsearch
+from sklearn.model_selection import train_test_split
+
+#Module related to calculation of metrics
+from sklearn import metrics
+
+#Module related to VIF 
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import statsmodels.formula.api as smf
+
+from sklearn.feature_selection import RFE, SelectKBest, chi2, f_classif
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+
+
+classifier = RandomForestClassifier()
+rfe = RFE(classifier, 15)
+rfe = rfe.fit(x, y )
+
+imp_vars_RFE = list(x.columns[rfe.support_])
+
+imp_vars_RFE
+
+
+SKB = SelectKBest(f_classif, k=15).fit(x, y )
+
+SKB.get_support()
+imp_vars_SKB = list(x.columns[SKB.get_support()])
+
+imp_vars_SKB
+
+Final_list = list(set(imp_vars_SKB +  imp_vars_RFE))
+
+len(Final_list) # 19 selected features 
+
+x_new= x[Final_list ]   # final X variables after feature reduction 
+
+y  # multiclass y variable 
+
+
+from sklearn.preprocessing import LabelEncoder
+
+from imblearn.over_sampling import SMOTE
+
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, GridSearchCV
+
+
+#Encoder for y variable
+enc =LabelEncoder()
+y = enc.fit_transform(y)
+
+y  # y variable lebel incoded 
+
+pd.Series(y).value_counts()
+
+#balancing the data as its multiclass classification
+sm = SMOTE()
+resampled_X, resampled_y = sm.fit_resample(x, y)
+
+x.shape, y.shape, resampled_X.shape , resampled_y.shape
+
+#step 3 split data into train and test
+
+#splitting to train and test dataset
+X_train, X_test, y_train, y_test = train_test_split(resampled_X, resampled_y, test_size = 0.2)
+
+# step 4) applying ML model of classification on data 
+
+#### Random Forest 
+
+Important Tuning Parameters for Random Forest:
+criterion - measure for quality of a split
+max_depth - The maximum depth of the tree.
+max_leaf_nodes - Number of features to consider when looking for the best split
+min_samples_leaf - The minimum number of samples required to be a leaf node. This may have effect of smoothing the model.
+min_sample_split - The minimum number of samples required to split an internal node.
+n_estimators - The number of trees in the forest
+max_features - Number of features to consider when looking for the best split
+
+
+# tuning parametes
+pargrid_ada = {'n_estimators': [50, 60, 70, 80, 90, 100],
+                'max_features': [5,6,7,8,9,10,11,12]}
+gscv_Rf = GridSearchCV(estimator=RandomForestClassifier(), 
+                        param_grid=pargrid_ada, 
+                        cv=5,
+                        verbose=True, n_jobs=-1)
+
+gscv_results = gscv_Rf.fit(X_train, y_train)
+gscv_results.best_score_
+
+gscv_results.best_params_
+
+gscv_results.best_score_
+
+radm_clf = RandomForestClassifier(oob_score=True,n_estimators= 50 , max_features=5, n_jobs=-1)
+radm_clf.fit( X_train, y_train)
+
+radm_clf
+
+train_pred = radm_clf.predict(X_train)
+test_pred = radm_clf.predict(X_test)
+
+print(metrics.classification_report(y_train, train_pred))
+
+print(metrics.classification_report(y_test, test_pred))
+
+#### the train and test accuracy is similar
+# this classfication multiclass model using Randomforest is helpful to predict LTV value of customers (high/Medium/Low)
+
+################################################################################################################################
+
+# Cross selling analysis (which products are selling together) 
+# perform exploratory analysis and MBA to understand which products can be bundled together 
+
+# we consider below Merged dataset  (sales, customer demo, invocie amount Or revenue generated)
+
+merg3.info()
+
+merg3.Location.unique()
+
+# lets handle one location at time and come up with recommended similar products to be sold to clients in that location 
+
+
+merg3.Product_Description= merg3.Product_Description.str.strip() # Removing unwanted space in Desciption
+
+
+## Location 1) CHICAGO  ,
+
+merg3.head(5)
+
+chicagodata = merg3[merg3.Location== 'Chicago'].groupby( [  "CustomerID","Transaction_ID" ,"Location" , "Product_Description"]).invoice_amount.sum()
+
+chicagodata= chicagodata.unstack().reset_index().fillna(0).set_index("Transaction_ID")
+
+#we need to consolidate the items into 1 transaction per row with each product 1 hot encoded.
+# Convert the units to 1 hot encoded values
+def encode_units(x):
+    if x <= 0:
+        return 0
+    if x >= 1:
+        return 1  
+
+chicagodata.drop(columns= ['CustomerID' , 'Location'], inplace=True)
+
+chicagodata = chicagodata.applymap(encode_units)
+
+!pip install mlxtend
+
+chicagodata[chicagodata.isna()==True] =0 
+
+import pandas as pd
+from mlxtend.frequent_patterns import apriori  # for removing least frequent combinations
+from mlxtend.frequent_patterns import association_rules # for defining rule of combination
+
+# Step to Build up the frequent items
+#Now that the data is structured properly, we can generate frequent item sets that have a support of 
+#at least 7% :
+frequent_itemsets = apriori(chicagodata, min_support=0.03, use_colnames=True)
+
+frequent_itemsets
+
+frequent_itemsets_chicago= frequent_itemsets.sort_values(by="support" , ascending=False)
+
+frequent_itemsets_chicago
+
+#### In chicago , we can sell above products combination as bundleed together 
+
+California_data = merg3[merg3.Location== "California"].groupby( [  "CustomerID","Transaction_ID" ,"Location" , "Product_Description"]).invoice_amount.sum()
+
+California_data
+
+California_data= California_data.unstack().reset_index().fillna(0).set_index("Transaction_ID")
+
+
+California_data
+
+California_data.drop(columns= ['CustomerID' , 'Location'], inplace=True)
+
+California_data = California_data.applymap(encode_units)
+
+California_data
+
+California_data[California_data.isna()==True] =0 
+
+frequent_itemsets_California = apriori(California_data, min_support=0.03, use_colnames=True)
+
+frequent_itemsets_California= frequent_itemsets_California.sort_values(by="support")
+
+frequent_itemsets_California
+
+#### for California Location, we can bundle above items or products 
+
+Newyork_data = merg3[merg3.Location== 'New York'].groupby( [  "CustomerID","Transaction_ID" ,"Location" , "Product_Description"]).invoice_amount.sum()
+
+Newyork_data
+
+Newyork_data= Newyork_data.unstack().reset_index().fillna(0).set_index("Transaction_ID")
+
+
+Newyork_data
+
+Newyork_data.drop(columns= ['CustomerID' , 'Location'], inplace=True)
+Newyork_data = Newyork_data.applymap(encode_units)
+Newyork_data[Newyork_data.isna()==True] =0
+frequent_itemsets_NewYork = apriori(Newyork_data, min_support=0.03, use_colnames=True)
+frequent_itemsets_NewYork= frequent_itemsets_NewYork.sort_values(by="support")
+
+frequent_itemsets_NewYork
+
+#### for New york  Location, we can bundle above items or products 
+
+
+
+ Newjersey_data =merg3[merg3.Location== 'New Jersey'].groupby( [  "CustomerID","Transaction_ID" ,"Location" , "Product_Description"]).invoice_amount.sum().unstack().reset_index().fillna(0).set_index("Transaction_ID")
+
+Newjersey_data
+
+Newjersey_data.drop(columns= ['CustomerID' , 'Location'], inplace=True)
+Newjersey_data= Newjersey_data.applymap(encode_units)
+Newjersey_data[Newjersey_data.isna()==True] =0
+frequent_itemsets_NewJersey= apriori(Newjersey_data, min_support=0.03, use_colnames=True)
+frequent_itemsets_NewJersey= frequent_itemsets_NewJersey.sort_values(by="support")
+
+ frequent_itemsets_NewJersey
+
+frequent_itemsets_NewJersey
+
+## 
+# For NEw Jersey Location , we can promote above bundled products togetehr 
+
+
+
+Washington_DC_data =merg3[merg3.Location== 'Washington DC'].groupby( [  "CustomerID","Transaction_ID" ,"Location" , "Product_Description"]).invoice_amount.sum().unstack().reset_index().fillna(0).set_index("Transaction_ID")
+
+Washington_DC_data.drop(columns= ['CustomerID' , 'Location'], inplace=True)
+Washington_DC_data= Washington_DC_data.applymap(encode_units)
+Washington_DC_data[Washington_DC_data.isna()==True] =0
+frequent_itemsets_WashingtonDC= apriori(Washington_DC_data, min_support=0.03, use_colnames=True)
+frequent_itemsets_WashingtonDC= frequent_itemsets_WashingtonDC.sort_values(by="support")
+
+frequent_itemsets_WashingtonDC
+
+#### for Washington DC , above products can be bundled together 
+
+##########################################################################################################################
+
+## Q. 6) Predicting next purchase date for customers(0-30 days, 30-60 days, 60-90 days, 90+ days )
+
+for i in range(len(merg3.Transaction_Date)):
+    
+    if i >0:
+        
+        print (merg3.Transaction_Date[i] - merg3.Transaction_Date[i-1])
+
+
+
+
+
+
+def find_avgdays(x) :
+    
+    
+  
+    
+    
+    for i in range(len(x)):
+        
+        
+        if i >0:
+            
+            
+            p= (x[i] - x[i-1])
+            
+            
+            
+            print (pd.Series(p))
+            
+   
+            
+            
+            
+            
+            
+            
+           
+            
+             
+            
+        
+    
+    
+        
+        
+
+lm= pd.to_datetime("2019-01-01" ) - (merg3.Transaction_Date)
+
+
+purchasedays= abs(lm.astype(str).str.replace("days" , '').astype(int))
+
+merg3['purchasedays']= purchasedays
+
+merg3.drop(columns= 'purchasedays' , inplace=True)
+
+num1= [purchasedays[i]- purchasedays[(i-1)] for i in range(len(purchasedays)) if i>0 ]
+
+
+
+num1 = pd.Series(num1)
+
+
+merg3["purchasedays"]= num1
+
+cust_data = merg3.groupby(['CustomerID' , 'Gender' , "Location" , 'Product_SKU' , 'Product_Description' , 'Product_Category' , 'Coupon_Status', 'Coupon_Code'])[['Transaction_ID', 'purchasedays' , 'invoice_amount', "Quantity", 'Tenure_Months']].agg({'Transaction_ID': 'count', 'purchasedays': 'mean' , 'invoice_amount': sum , "Quantity" : sum , 'Tenure_Months' : 'mean' })
+
+cust_data.columns = ('Transaction_ID_count', 'avg_purchasedays' , "invoice_amount" , "quantity" , 'Tenure_Months')
+
+cust_data_repeat= cust_data[cust_data['Transaction_ID_count'] >1]
+
+cust_data_repeat
+
+pd.Series(np.where(cust_data_repeat.avg_purchasedays <=30 , "0-30days" ,  np.where(((cust_data_repeat.avg_purchasedays >30)& (cust_data_repeat.avg_purchasedays <=60)) , "30-60days" , np.where(((cust_data_repeat.avg_purchasedays >60)& (cust_data_repeat.avg_purchasedays <=90)),"60-90days" , "90days+" ))))
+
+avg_days= pd.Series(np.where(cust_data_repeat.avg_purchasedays <=30 , "0-30days" ,  np.where(((cust_data_repeat.avg_purchasedays >30)& (cust_data_repeat.avg_purchasedays <=60)) , "30-60days" , np.where(((cust_data_repeat.avg_purchasedays >60)& (cust_data_repeat.avg_purchasedays <=90)),"60-90days" , "90days+" ))))
+
+cust_data_repeat.reset_index(level = ['CustomerID' , 'Gender', 'Location' , 'Product_SKU' , 'Product_Description' , 'Product_Category',  'Coupon_Status',  'Coupon_Status',  'Coupon_Code'] , inplace=True)
+
+cust_data_repeat['avg_days'] = avg_days
+
+cust_data_repeat 
+
+#### this is data based on customers with repeat transcations and with new dependent variable added as Avg_days of purchase made
+
+# building classification model (multilclass) since y variable is multinomial 
+
+#importing
+
+
+from matplotlib import pyplot
+from xgboost import XGBClassifier
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import GridSearchCV
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import train_test_split
+
+pandas_profiling.ProfileReport(cust_data_repeat)
+
+cust_data_repeat.drop(columns=['Product_SKU' ,'Product_Description','Coupon_Code', 'CustomerID' , "avg_purchasedays" ] , inplace=True)
+
+cust_data_repeat.info()
+
+cust_data_repeat=pd.get_dummies(cust_data_repeat, columns=['Gender' , 'Location' , 'Product_Category', 'Coupon_Status'] , drop_first=True)
+
+cust_data_repeat.info()
+
+cust_data_repeat.isna().sum() # no missing values 
+
+# lets split data into x and y variable 
+
+#splitting 
+X_variables  = cust_data_repeat.drop(columns = ['avg_days'])
+y_variable = cust_data_repeat['avg_days']
+
+X_variables.columns
+
+y_variable
+
+#Encoder for y variable
+enc =LabelEncoder()
+y_variable = enc.fit_transform(y_variable)
+
+y_variable
+
+pd.Series(y_variable).value_counts()
+
+sm = SMOTE()
+resampled_X_variables, resampled_y_variable = sm.fit_resample(X_variables, y_variable)
+
+X_variables.shape , y_variable.shape
+
+resampled_X_variables.shape, resampled_y_variable.shape
+
+#splitting to train and test dataset
+trainx, testx, trainy, testy = train_test_split(resampled_X_variables, resampled_y_variable, test_size = 0.30)
+
+#svc = SVC(kernel='rbf', class_weight='balanced')
+from sklearn.svm import SVC
+
+param_grid = {'C': [1]}
+gridnew = GridSearchCV(SVC(), param_grid)
+
+gridnew.fit(trainx, trainy)
+print(gridnew.best_params_)
+
+modelnew = gridnew.best_estimator_
+
+
+yfittest = modelnew.predict(testx)
+
+yfittrain = modelnew.predict(trainx)
+
+from sklearn.metrics import classification_report
+print(classification_report(testy , yfittest))
+
+print(classification_report(trainy , yfittrain))
+
+# classification report for train and test for SVM model is similaer 
+
+xgb = XGBClassifier(n_estimators=100,
+                    max_depth=15, 
+                    gamma = 7)
+eval_set = [(trainx, trainy), (testx, testy)]
+eval_metric = ["mlogloss"]
+xgb.fit(trainx, trainy, eval_metric=eval_metric, eval_set=eval_set, verbose=True)
+xgb.score(trainx, trainy)
+xgb.score(testx, testy)
+
+print(xgb.score(trainx, trainy) ,xgb.score(testx, testy))
+# as per above XGB classfier test and train data have similar score 
+
+## # classification model performed to predict avg_purchase next days for selected customer wth repeat transcations based on SVM nd XGB models 
+
+###########################################################################################################################
+
+#   7) COHORT ANALYSIS 
+
+# cohort means group of customers with similar behaviour.like first purchase date 
+# we will see monthly retention of clients and study when its max and when its minimum.
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import warnings
+import seaborn as sns
+from operator import attrgetter
+import matplotlib.colors as mcolors
+
+merg3.head(2)
+
+# Step 1) select only relative variables and drop duplicates if any 
+
+cohort_data = merg3[['CustomerID', 'Transaction_ID', 'Transaction_Date']].drop_duplicates()
+
+# We create cohort variable and order month variable 
+# order month = month in which transcation ordered
+merg3['order_month']  = merg3['Transaction_Date'].dt.to_period('M')
+
+
+# cohort = first date of transcation per client
+merg3['cohort']= merg3.groupby('CustomerID')['Transaction_Date'].transform("min").dt.to_period('M') 
+
+# Step 3) we aggregate data based on order_month and cohort and count of numbers of customers in them
+
+merg3_cohort = merg3.groupby(['cohort', 'order_month'])['CustomerID'].count().reset_index(drop=False)
+
+# step 4) we find no of periods between cohort(start month) and purchase month.
+
+merg3_cohort["period_number"] = (merg3_cohort.order_month - merg3_cohort.cohort).apply(attrgetter('n'))
+
+merg3_cohort.columns= ['cohort' , 'order_month' , 'CustomerID_count' , "period_number"]
+
+merg3_cohort  # in this we can see someone has started and purchased same month, whereas some otehr clients have purchased 1 month/2 month /3 months later than they started 
+
+
+# will create pivot table where each row will be a cohort and each column would show total clients for that period.
+cohort_pivot = merg3_cohort.pivot_table(index = 'cohort',
+                                     columns = 'period_number',
+                                     values = 'CustomerID_count')
+
+cohort_pivot
+
+
+####  To obtain the retention matrix , we need to divide the values each row by the row's first value, which is actually the cohort size — all customers who made their first purchase in the given month.
+
+cohort_size = cohort_pivot.iloc[:,0]
+retention_matrix = cohort_pivot.divide(cohort_size, axis = 0)
+
+retention_matrix
+
+# we reprsent this retenstion matrix with heatmap 
+
+with sns.axes_style("white"):
+    fig, ax = plt.subplots(1, 2, figsize=(12, 8), sharey=True, gridspec_kw={'width_ratios': [1, 11]})
+    
+    # retention matrix
+    sns.heatmap(retention_matrix, 
+                mask=retention_matrix.isnull(), 
+                annot=True, 
+                fmt='.0%', 
+                cmap='RdYlGn', 
+                ax=ax[1])
+    ax[1].set_title('Monthly Cohorts: User Retention', fontsize=16)
+    ax[1].set(xlabel='# of periods',
+              ylabel='')
+
+    # cohort size
+    cohort_size_df = pd.DataFrame(cohort_size).rename(columns={0: 'cohort_size'})
+    white_cmap = mcolors.ListedColormap(['white'])
+    sns.heatmap(cohort_size_df, 
+                annot=True, 
+                cbar=False, 
+                fmt='g', 
+                cmap=white_cmap, 
+                ax=ax[0])
+
+    fig.tight_layout()
+
+# As per first month in Jan 2019 , max clients started .
+# clients who joined in first cohort (jan 2019), only 19% of them retained at the year end .
+# for other cohorts (from feb till Dec), retention percentage is gone much down 
+
+
+# Throughout the matrix, we can see fluctuations in retention over time. This might be caused by the characteristics of the business, where clients do periodic purchases, followed by periods of inactivity.
+
+## Jan 2019 has maximum retention of customers 
+
+
+
