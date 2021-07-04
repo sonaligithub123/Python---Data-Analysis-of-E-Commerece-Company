@@ -1,0 +1,690 @@
+%cd  "C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/12 Cyber security"
+
+#Packages related to data importing, manipulation, exploratory data analysis, data understanding
+import numpy as np
+import pandas as pd
+from pandas import Series, DataFrame
+
+
+
+import scipy.stats as stats
+
+#Packages related to data visualizaiton
+import seaborn as sns
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+
+
+#Modules related to split the data & gridsearch
+from sklearn.model_selection import train_test_split
+
+#Module related to calculation of metrics
+from sklearn import metrics
+
+#Module related to VIF 
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+import statsmodels.formula.api as smf
+
+from sklearn.feature_selection import RFE, SelectKBest, chi2, f_classif
+
+Data_of_Attack_Back = pd.read_csv("C:/Users/vedso/OneDrive/Documents/Data Analytics/python/Python files/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/12 Cyber security/Data_of_Attack_Back.csv")
+
+Data_of_Attack_Back["attack"]=0
+
+
+Data_of_Attack_Back_BufferOverflow = pd.read_csv("Data_of_Attack_Back_BufferOverflow.csv")
+
+Data_of_Attack_Back_BufferOverflow["attack"]=0
+
+Data_of_Attack_Back_FTPWrite = pd.read_csv("Data_of_Attack_Back_FTPWrite.csv")
+
+Data_of_Attack_Back_GuessPassword = pd.read_csv("Data_of_Attack_Back_GuessPassword.csv")
+
+Data_of_Attack_Back_GuessPassword["attack"]=0
+
+Data_of_Attack_Back_Neptune = pd.read_csv("Data_of_Attack_Back_Neptune.csv")
+
+Data_of_Attack_Back_Neptune["attack"]=0
+
+Data_of_Attack_Back_NMap= pd.read_csv("Data_of_Attack_Back_NMap.csv")
+
+Data_of_Attack_Back_NMap["attack"]=0
+
+Data_of_Attack_Back_Normal= pd.read_csv("Data_of_Attack_Back_Normal.csv")
+
+Data_of_Attack_Back_Normal["attack"]=1
+
+Data_of_Attack_Back_PortSweep= pd.read_csv("Data_of_Attack_Back_PortSweep.csv")
+
+Data_of_Attack_Back_PortSweep["attack"]=0
+
+Data_of_Attack_Back_RootKit= pd.read_csv("Data_of_Attack_Back_RootKit.csv")
+
+Data_of_Attack_Back_RootKit["attack"]=0
+
+Data_of_Attack_Back_Satan= pd.read_csv("Data_of_Attack_Back_Satan.csv")
+
+Data_of_Attack_Back_Satan["attack"]=0
+
+Data_of_Attack_Back_Smurf= pd.read_csv("Data_of_Attack_Back_Smurf.csv")
+
+Data_of_Attack_Back_Smurf["attack"]=0
+
+Data_of_Attack_Back_FTPWrite["attack"]=0
+
+Data_of_Attack_Back_FTPWrite.columns=['duration', ' protocol_type', ' service', ' flag', ' src_bytes',
+       ' dst_bytes', ' land', ' wrong_fragment', ' urgent', ' hot',
+       ' num_failed_logins', ' logged_in', ' num_compromised', ' root_shell',
+       ' su_attempted', ' num_root', ' num_file_creations', ' num_shells',
+       ' num_access_files', ' num_outbound_cmds', ' is_host_login',
+       ' is_guest_login', ' count', ' srv_count', ' serror_rate',
+       ' srv_error_rate', ' rerror_rate', ' srv_rerror_rate', ' same_srv_rate',
+       ' diff_srv_rate', ' srv_diff_host_rate', ' dst_host_count',
+       ' dst_host_srv_count', ' dst_host_same_srv_rate',
+       ' dst_host_diff_srv_rate', ' dst_host_same_src_port_rate',
+       ' dst_host_srv_diff_host_rate', ' dst_host_serror_rate',
+       ' dst_host_srv_serror_rate', ' dst_host_rerror_rate',
+       ' dst_host_srv_rerror_rate' , "attack"]
+
+# let us append all data by row 
+
+data_appended_binomial = pd.concat([Data_of_Attack_Back , Data_of_Attack_Back_BufferOverflow, Data_of_Attack_Back_FTPWrite , Data_of_Attack_Back_GuessPassword,Data_of_Attack_Back_Neptune, Data_of_Attack_Back_NMap,Data_of_Attack_Back_Normal,Data_of_Attack_Back_PortSweep, Data_of_Attack_Back_RootKit,Data_of_Attack_Back_Satan,Data_of_Attack_Back_Smurf])
+
+data_appended_binomial.head(5)
+
+pip install pandas_profiling
+
+import pandas_profiling as pandas_profiling
+pandas_profiling.ProfileReport(data_appended_binomial)
+
+data_appended_binomial.columns
+
+data_appended_binomial.columns= data_appended_binomial.columns.str.replace(" " , "") # extra space removed 
+
+# based on pandas detailed profile report , 
+#' Land' and ' num_outbound_cmds'- constant value 0 - drop the variable 
+
+# ' hot',  is_host_login', ' num_failed_logins' , ' num_compromised' ,' num_root' ,' num_file_creations' , ' num_access_files', - more than 99.5% value is 0  drop the variable 
+# 
+
+data_appended_binomial.drop(columns=['land','num_outbound_cmds','hot','is_host_login' ,'num_failed_logins','num_compromised','num_root','num_file_creations','num_access_files'], inplace=True)
+
+data_appended_binomial
+
+data_appended_binomial.info()  # unwanted columns dropped 
+
+data_appended_binomial.isna().sum()  # no missing values 
+
+data_appended_binomial_nominalbinary = data_appended_binomial.loc[: , ['protocol_type', 'service', 'flag' , 'logged_in' ,'root_shell',
+       'su_attempted','is_guest_login']]
+
+data_appended_binomial_nominalbinary
+
+data_appended_binomial_numeric= data_appended_binomial.drop(columns= data_appended_binomial_nominalbinary.columns)
+
+def outlier(p):
+    
+   
+        
+        if type(p) == 'float64' or  type(p)== 'int64':
+            
+            p = p.clip(lower = p.quantile(0.01) , upper= p.quantile(0.99))
+            
+        else :
+            
+            p 
+            
+        return p
+
+
+data_appended_binomial_numeric
+
+data_appended_binomial_numeric= data_appended_binomial_numeric.apply(outlier) # outliers in numeric variables are treated 
+
+    datanew =pd.concat([data_appended_binomial_nominalbinary , data_appended_binomial_numeric],axis=1)
+
+# feature reduction on above data 
+ # methods to be used -: 1) information value (WOE) 2) select k best 
+
+
+
+# first seperate y variable and x variables 
+
+
+x_var = datanew.drop(columns="attack")
+
+y_var = datanew.attack
+
+# lets reduce features 
+
+### 1) USING INFORMATION VALUE 
+# check lineraity amongst x variabe and Y variable ( just sa similar option to  as checking coorrelation values of x with y)
+
+# check information value for all x varables . 
+
+# You can select the variables based on the information value and below criteria
+
+#(IV: <0.02, Predictive Power: Useless for prediction
+#IV: 0.02 - 0.1, Predictive Power: Weak predictor
+#IV: 0.1 - 0.3, Predictive Power: Medium predictor
+#IV: 0.3 - 0.5, Predictive Power: Storng predictor
+#IV: > 0.5, Predictive Power: Suspecious predictor or too good predictor)
+
+# information value is difference of percentage between 0's vs 1's 
+#more the difference, better the variable , less the difference , that means variable is not good enough to differentiate between 
+# 0s and 1s. hence ignroe those weak variables 
+
+def calculate_woe_iv(dataset, feature, target):
+    lst = []
+    
+    for i in range(dataset[feature].nunique()):
+        val = list(dataset[feature].unique())[i]
+        lst.append({
+            'Value': val,
+            'All': dataset[dataset[feature] == val].count()[feature],
+            'Good': dataset[(dataset[feature] == val) & (dataset[target] == 0)].count()[feature],
+            'Bad': dataset[(dataset[feature] == val) & (dataset[target] == 1)].count()[feature]
+        })
+        
+    dset = pd.DataFrame(lst)
+    dset['Distr_Good'] = dset['Good'] / dset['Good'].sum()
+    dset['Distr_Bad'] = dset['Bad'] / dset['Bad'].sum()
+    dset['WoE'] = np.log(dset['Distr_Good'] / dset['Distr_Bad'])
+    dset = dset.replace({'WoE': {np.inf: 0, -np.inf: 0}})
+    dset['IV'] = (dset['Distr_Good'] - dset['Distr_Bad']) * dset['WoE']
+    iv = dset['IV'].sum()
+    
+    dset = dset.sort_values(by='WoE')
+    
+    return dset, iv
+
+for col in datanew.columns:
+    if col == 'attack': continue
+    else:
+        print('WoE and IV for column: {}'.format(col))
+        df, iv = calculate_woe_iv(datanew, col, 'attack')
+       # print(df)
+        print('IV score: {:.2f}'.format(iv))
+        print('\n')
+
+# based on information values which are higher than 0.02 and above , we consider them as useful . rest are uselss variables 
+
+feature1 = ['protocol_type', 'service', 'flag', 'logged_in', 
+         'duration', 'src_bytes', 'dst_bytes',
+         'count', 'srv_count',
+       'serror_rate', 'srv_error_rate', 'rerror_rate', 'srv_rerror_rate',
+       'same_srv_rate', 'diff_srv_rate', 'srv_diff_host_rate',
+       'dst_host_count', 'dst_host_srv_count', 'dst_host_same_srv_rate',
+       'dst_host_diff_srv_rate', 'dst_host_same_src_port_rate',
+       'dst_host_srv_diff_host_rate', 'dst_host_serror_rate',
+       'dst_host_srv_serror_rate', 'dst_host_rerror_rate',
+       'dst_host_srv_rerror_rate' ]
+
+# method 2 - select kbest 
+SKB = SelectKBest(f_classif, k=10).fit(x_var, y_var)
+
+feature2 = x_var.columns[SKB.get_support()]
+
+feature2
+
+# method 3 - RFE
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+
+feature_final= set(list(feature1)+list(feature2))
+
+
+# now check multi collinearity among x variables and furtehr reduce them by using VIF
+
+# VIF shuld be less than 5 ideally, if more than 5 , remove it 
+
+# final x variables are feature final . 
+
+x_reduced = x_var.loc[ :, feature_final]
+
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+
+x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)
+
+# let us drop VIF with more than 5 one by one 
+#  VIF values more than 5 : srv error rate , dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ 'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ 'dst_host_srv_serror_rate',
+ 'duration',
+ 'flag',
+ 'logged_in',
+ 'protocol_type',
+ 'rerror_rate',
+ 'same_srv_rate',
+ 'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : serror_ rate , dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ 'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ 'dst_host_srv_serror_rate',
+ 'duration',
+ 'flag',
+ 'logged_in',
+ 'protocol_type',
+ 'rerror_rate',
+ 'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : dst_host_srv_serror_rate, dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ 'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ 'flag',
+ 'logged_in',
+ 'protocol_type',
+ 'rerror_rate',
+ 'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : flag, dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ 'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ 'logged_in',
+ 'protocol_type',
+ 'rerror_rate',
+ 'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : dst_host_same_srv_rate, dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ 'logged_in',
+ 'protocol_type',
+ 'rerror_rate',
+ 'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : rerror_ rate, dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ 'logged_in',
+ 'protocol_type',
+ #'rerror_rate',
+ 'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : same_srv_rate' dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+ 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ 'logged_in',
+ 'protocol_type',
+ #'rerror_rate',
+ #'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : dst_host_srv_rerror_rate dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+# 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ 'logged_in',
+ 'protocol_type',
+ #'rerror_rate',
+ #'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : logged_in dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ 'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+# 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ #'logged_in',
+ 'protocol_type',
+ #'rerror_rate',
+ #'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+#  VIF values more than 5 : dst_host_rerror_rate dropping the same 
+
+feature_final = ['count',
+ 'diff_srv_rate',
+ 'dst_bytes',
+ 'dst_host_count',
+ 'dst_host_diff_srv_rate',
+ #'dst_host_rerror_rate',
+ 'dst_host_same_src_port_rate',
+ #'dst_host_same_srv_rate',
+ 'dst_host_serror_rate',
+ 'dst_host_srv_count',
+ 'dst_host_srv_diff_host_rate',
+# 'dst_host_srv_rerror_rate',
+ #'dst_host_srv_serror_rate',
+ 'duration',
+ #'flag',
+ #'logged_in',
+ 'protocol_type',
+ #'rerror_rate',
+ #'same_srv_rate',
+ #'serror_rate',
+ 'service',
+ 'src_bytes',
+ 'srv_count',
+ 'srv_diff_host_rate',
+ #'srv_error_rate',
+ 'srv_rerror_rate']
+
+x_reduced = x_var.loc[ :, feature_final]
+vif = pd.DataFrame()
+vif["vif_value"] = [variance_inflation_factor(x_reduced.values, i) for i in range(x_reduced.shape[1])]
+
+vif["features"] = x_reduced.columns
+
+vif.sort_values(by="vif_value" , ascending =False)  
+
+# we will keep above features whose VIF is around 5 to 6
+
+
+x_varnew = x_var[feature_final]
+
+x_varnew.columns
+
+x_varnew.info()  # reduced final columns to 16 
+
+finaldata= pd.concat([x_varnew, y_var], axis=1)
+
+# final spilt data into test and train (70:30 ratio) 
+# splitting data into train and test 
+# splitting x avriable and y variable both 
+train_X, test_X, train_y, test_y = train_test_split(x_varnew, y_var, test_size=0.3, random_state=123)
+
+train_X.shape , train_y.shape, test_X.shape , test_y.shape
+
+# data modelling 
+from sklearn.ensemble import RandomForestClassifier 
+from sklearn.model_selection import GridSearchCV, train_test_split
+
+pargridrandom = { "n_estimators" : [50,60,70,80,90,100] , 
+                "max_features" : [3,4,6], 
+               "max_depth": [2,3,4,5,6] }
+
+randommodel = GridSearchCV(RandomForestClassifier() , pargridrandom , cv=5 , verbose=True, scoring= 'roc_auc' , n_jobs=-1).fit(train_X, train_y)
+
+randommodel.best_params_ , randommodel.best_score_
+
+modelrandom = RandomForestClassifier(oob_score=True, max_depth=6, max_features = 4, n_estimators= 80 , n_jobs=-1).fit(train_X, train_y)
+
+
+# check accuracy of model 
+# 1)  roc_aucscore 
+#Train data - AUC Score
+print(metrics.roc_auc_score(train_y, pd.DataFrame(modelrandom.predict_proba(train_X))[1]))
+
+#Test data - AUC Score
+print(metrics.roc_auc_score(test_y, pd.DataFrame(modelrandom.predict_proba(test_X))[1]))
+
+train_pred_1 = modelrandom.predict(train_X)
+test_pred_1 = modelrandom.predict(test_X)
+
+# lets check classification report 
+
+
+print(metrics.classification_report(train_y , train_pred_1))
+
+print(metrics.classification_report(test_y , test_pred_1))
+
+# check important featurs from random forest
+
+modelrandom.feature_importances_
+
+train_X.columns
+
+imp_random_features = pd.concat([pd.Series(train_X.columns) , pd.Series(modelrandom.feature_importances_)] , axis=1)
+
+
+imp_random_features.columns= ["features" , "imp"]
+
+imp_random_features.sort_values(by="imp" , ascending=False)
