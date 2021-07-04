@@ -1,0 +1,375 @@
+import pandas as pd
+import numpy as np
+import pandas_profiling as pandas_profiling
+import  matplotlib.pyplot as plt
+import seaborn as sns
+
+credit = pd.read_excel("D:/Analytics Complete/python/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/11. Predicting credit card consumption/CreditConsumptionData.xlsx")
+
+custbehav = pd.read_excel("D:/Analytics Complete/python/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/11. Predicting credit card consumption/CustomerBehaviorData.xlsx")
+
+custdemo = pd.read_excel("D:/Analytics Complete/python/Case studies and assignments/Assignmets downloaed/Python advanced capestone projects/11. Predicting credit card consumption/CustomerDemographics.xlsx")
+
+credit.info()  # 20000 rows and 2 columns
+
+credit.head(10)
+
+custbehav.info()
+
+custbehav.head(10)
+
+custdemo.info()
+
+
+custdemo.head(10)
+
+pandas_profiling.ProfileReport(credit)
+
+pandas_profiling.ProfileReport(custbehav)
+
+pandas_profiling.ProfileReport(custdemo)
+
+
+
+# lets merge the data using customer ID as primary Key 
+
+merge1 = pd.merge(credit , custbehav , on="ID")
+
+merge2= pd.merge(merge1 , custdemo , on="ID")
+
+merge2.info()
+
+# step 1 ) Data prepartion 
+At Variable Level
+     - Data types - mismatch    
+     - Categorical    Nomial/    ordinal
+     - Which of the variables date variables? Can we create any Derived variables?
+     - Does variables need renaming?    
+     - Does data have Missing values?    
+     - Does data have Outliers?    
+     - Does data have Duplicate records    
+     - Does Variables with multiple values - do we need to split/extract specific information from the variable?    
+     - Does data have Special values - 0's, @, ?, #NA, #N/A, #Error, Currencies, Null values, -inf, inf, 99999    
+     - Understand Distribution of data    
+            - Percentile distribution
+            - Histogram/Boxplot for continuous
+            - Bar chart for categorical
+     - Understand Relationships (correlations/associations)    
+     - Perform detailed Exploratory analysis?    
+     - Create Derived variables to define using data (KPI's)
+         - Using Ratios
+         - Using date/time variables
+         - Using string variables
+     - sample representing population or not?    
+     - Identify variables with Near Zero variance?    
+         - By looking at percentile distribution
+         - By looking at CV <0.05
+     - Identify variables required to do encoding (Label encoding/One hot encoding)
+
+merge2
+
+# combining Credit card consumption for Apr May and Jun Quarter
+
+merge2["cc_cons_aprmayjun"] =(merge2.cc_cons_apr)+ (merge2.cc_cons_may)+ (merge2.cc_cons_jun) 
+
+# combining debit card  consumption for Apr May and Jun Quarter
+merge2["dc_cons_aprmayjun"] = merge2.dc_cons_apr+merge2.dc_cons_may+merge2.dc_cons_jun
+
+# combining number of credit card transcation count for Apr, May and Jun  Quarter
+
+merge2["cc_count_aprmayjun"]=merge2.cc_count_apr+merge2.cc_count_may+merge2.cc_count_jun
+
+# combining number of debit card transcation count for Apr, May and Jun  Quarter
+
+merge2["dc_count_aprmayjun"]=merge2.dc_count_apr+merge2.dc_count_may+merge2.dc_count_jun
+
+# combining total amount debited in bank account  for Apr, May and Jun  Quarter
+merge2["total_debitamt_aprmayjun"] = merge2.debit_amount_apr+merge2.debit_amount_may+merge2.debit_amount_jun
+
+# combining total amount credited in bank account  for Apr, May and Jun  Quarter
+
+merge2["total_creditamt_aprmayjun"] = merge2.credit_amount_apr+merge2.credit_amount_may+merge2.credit_amount_jun
+
+# combining total number of times amount debited in bank account  for Apr, May and Jun  Quarter
+
+merge2["debitamt_count_aprmayjun"] = merge2.debit_count_apr+merge2.debit_count_may+merge2.debit_count_jun
+
+# combining total number of times amount credited  in bank account  for Apr, May and Jun  Quarter
+
+
+merge2["creditamt_count_aprmayjun"] = merge2.credit_count_apr+merge2.credit_count_may+merge2.credit_count_jun
+
+merge2["AvgMax_Credit_amt_aprmayjun"] = (merge2.max_credit_amount_apr+merge2.max_credit_amount_may+merge2.max_credit_amount_jun)/3
+
+# lets us drop the original variables and keep above derived combined variables which are created now
+
+merge2.columns
+
+merge2.drop(columns=['cc_cons_apr', 'dc_cons_apr', 'cc_cons_may',
+       'dc_cons_may', 'cc_cons_jun', 'dc_cons_jun', 'cc_count_apr',
+       'cc_count_may', 'cc_count_jun', 'dc_count_apr', 'dc_count_may',
+       'dc_count_jun','debit_amount_apr', 'credit_amount_apr', 'debit_count_apr',
+       'credit_count_apr', 'max_credit_amount_apr', 'debit_amount_may',
+       'credit_amount_may', 'credit_count_may', 'debit_count_may',
+       'max_credit_amount_may', 'debit_amount_jun', 'credit_amount_jun',
+       'credit_count_jun', 'debit_count_jun', 'max_credit_amount_jun','total_debit_aprmayjun', 'total_credit_aprmayjun' ] , inplace=True)
+
+merge2.personal_loan_closed.unique()
+
+merge2.personal_loan_active.unique()
+
+merge2.vehicle_loan_active.unique()
+
+merge2.vehicle_loan_active.nunique()
+
+merge2.vehicle_loan_closed.unique()
+
+merge2.vehicle_loan_closed.nunique()
+
+merge2.loan_enq.unique()
+
+merge2.loan_enq.nunique()
+
+# Personal loan active , Personal Loan clsoed, Vehicle loan active and vehicle loan closed , Loan enq : All this variables have zero variance and have constant values 
+# hence we will drop them 
+
+merge2.drop(columns=['personal_loan_active', 'vehicle_loan_active',
+       'personal_loan_closed', 'vehicle_loan_closed','loan_enq'] , inplace=True)
+
+merge2.info()
+
+merge2.Income.unique()
+
+merge2.account_type.nunique()
+
+merge2.dtypes
+
+# drop ID variable and y variable to be sepearted ( cc_cons which is target variable )
+
+merge2.drop(columns="ID" , inplace=True) 
+
+y_var = merge2.cc_cons  # seperating y variable 
+
+merge2.drop(columns="cc_cons" , inplace=True) # dropping y variable from original data 
+
+# let us treat misisng values and outliers 
+
+def outlier_treat(x):
+    if ((type(x)=='float64') or (type(x)=='int64')):
+        x= x.clip(lower = x.quantile(0.01), upper=x.quantile(0.99))
+    else:
+        x
+    return x
+
+merge2 = merge2.apply(outlier_treat)
+
+# let us treat missing values in above data which has been treated already for outliers 
+def missing_value_treat(x):
+    if ((x.dtype=='float') or (x.dtype=='int')):
+        x=x.fillna(x.mean())
+    else:
+        x=x.fillna(x.mode()[0])
+        
+    return x    
+
+merge2 = merge2.apply(missing_value_treat) # misisng values treated 
+
+merge2.isna().sum()
+
+
+merge2.region_code.unique() # this is originally a catgorical variable which has been ordered. We can drop this as it has very high v
+
+
+# Region code is categorical which is masked and has very high variance of 200 . we can drop this variable
+merge2.drop(columns="region_code" , inplace=True)
+
+merge2.Income.unique()  # this is oridinal and can be label encoded as high =1 , medium=2 and low= 3 
+
+income_encoded = np.where(merge2.Income == "HIGH" , 1 , np.where(cat_data.Income == "MEDIUM", 2, 3))
+
+merge2["income_encoded"]= pd.Series(income_encoded)
+
+income_encoded.unique()
+
+merge2.drop(columns="Income" , inplace=True)
+
+merge2 = pd.get_dummies(merge2 ,columns=["account_type" , "gender"] , drop_first=True)
+
+merge2.head(5)
+
+merge2.info()  # all categorical variables are converted into numeric data 
+
+y_var.hist()
+
+y_var.quantile(0.05) , y_var.quantile(0.90) # outlier check
+
+
+                                      
+y_var.clip(lower= y_var.quantile(0.05) , upper= y_var.quantile(0.90) , inplace=True) # treating outliers in y variable 
+
+y_var.quantile(np.linspace(0,1,15)) # outliers treated 
+
+y_var.hist()  # check normality of y variable 
+
+np.log(y_var).hist()  # log trasformation applied on y variable to make it normal 
+
+y_var_log = np.log(y_var)
+
+merge2["y_var_log"]=y_var_log
+
+
+merge2.info()
+
+
+merge2.y_var_log
+
+data_ymissing = merge2[merge2.y_var_log.isna()==True]  # we will split data which has y present and y null or missing values
+
+data_ypresent = merge2[~merge2.y_var_log.isna()==True]
+
+data_ypresent.shape
+
+data_ymissing.shape
+
+data_ypresent
+
+ data_ypresent.corrwith(data_ypresent.y_var_log)
+
+from sklearn.feature_selection import RFE,  SelectKBest
+from sklearn.ensemble import RandomForestRegressor
+
+
+y = data_ypresent.y_var_log
+
+X= data_ypresent.iloc[: , 0:23]
+
+rfe= RFE(RandomForestRegressor() , 15).fit(X,y) # feature reduction
+
+X.columns[rfe.get_support()]
+
+X_new= X.loc[: , ['card_lim', 'investment_1', 'investment_2', 'investment_3',
+       'emi_active', 'Emp_Tenure_Years', 'cc_cons_aprmayjun',
+       'dc_cons_aprmayjun', 'cc_count_aprmayjun', 'dc_count_aprmayjun',
+       'total_debitamt_aprmayjun', 'total_creditamt_aprmayjun',
+       'debitamt_count_aprmayjun', 'creditamt_count_aprmayjun',
+       'AvgMax_Credit_amt_aprmayjun']] 
+
+X_new.columns
+
+#To check multicollinieiryt
+### VIF Calculation for variables
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+vif = pd.DataFrame()
+vif["VIF_Factor"] = [variance_inflation_factor(X_new.values, i) for i in range(X_new.shape[1])]
+vif["features"] = X_new.columns
+
+vif.sort_values(by="VIF_Factor", ascending=False)
+
+# no multi collinearity is present as all variables are below 5 
+
+# lets use KNN regressor for modelling data 
+#Modules related to split the data & gridsearch
+from sklearn.model_selection import train_test_split, GridSearchCV
+
+train_X, test_X, train_y, test_y=train_test_split(X_new, y, test_size=0.3, random_state=123)
+
+#Pre-requisite:standardization of data
+from sklearn.preprocessing import StandardScaler
+
+sc= StandardScaler()
+
+sc =sc.fit(train_X)
+
+train_X.info()
+
+train_X_std = sc.transform(train_X)
+
+train_X_std = pd.DataFrame(train_X_std, columns = train_X.columns)
+
+param_grid = {'n_neighbors':[3,4,5,6,7,8,9,10], 
+              'weights':['uniform', 'distance'] }   
+
+
+knn_model = GridSearchCV(KNeighborsRegressor() , param_grid , cv=10, scoring ="r2" , verbose=True).fit(train_X_std, train_y)
+
+
+knn_model
+
+
+knn_model.best_params_
+
+knn_model.best_score_
+
+knn_model= KNeighborsRegressor(n_neighbors=10, weights='uniform', n_jobs=-1).fit(train_X_std,train_y)
+
+train_pred = knn_model.predict(train_X_std)
+
+train_pred
+
+test_X_std = pd.DataFrame(test_X_std, columns = test_X.columns)
+
+test_pred = knn_model.predict(test_X_std)
+
+test_pred
+
+test_y
+
+
+np.exp(train_y)
+
+train_pred
+
+train_y
+
+train_y_actual =np.exp(train_y)
+
+train_pred_actual =np.exp(train_pred) 
+
+np.mean(np.abs(train_y_actual-train_pred_actual)/train_y_actual) # MAPE accuracy 
+
+test_y_actual =np.exp(test_y)
+
+test_pred_actual =np.exp(test_pred) 
+
+np.mean(np.abs(test_y_actual-test_pred_actual)/test_y_actual) # MAPE accuracy 
+
+# for test and train data , MAPE is similar 
+
+# calculate RMSPE
+
+rmspe_train = (np.sqrt(np.mean(np.square((train_y_actual - train_pred_actual) / train_y_actual))))
+
+rmspe_train
+
+rmspe_test = (np.sqrt(np.mean(np.square((test_y_actual - test_pred_actual) / test_y_actual))))
+
+rmspe_test
+
+# for test and train data , RMSPE is similar 
+
+# let us use model and predict for unseen data where y varianle is missing in given target variable .
+
+data_ymissing.info()  # data with missing y variable : as NaN values 
+
+data_ymissing1 = data_ymissing[X_new.columns] # updated data with reduced X columns 
+
+data_ymissing_X = data_ymissing[X_new.columns]
+
+data_ymissing_X
+
+sc1= sc.fit(data_ymissing_X)  # standarding X var for KNN 
+
+data_ymissing_X_scaled= sc1.transform(data_ymissing_X) # x variables standardised 
+
+data_ymissing_X_scaled = pd.DataFrame(data_ymissing_X_scaled , columns=data_ymissing_X.columns)
+
+data_ymissing_X_scaled
+
+data_ymissing_X_scaled.shape , data_ymissing.y_var_log.shape
+
+new_y_predict = knn_model.predict(data_ymissing_X_scaled)
+
+new_cc_consumption_predicted = np.exp(new_y_predict) 
+
+# the above is predicted values for unseen Y variable using KNN model validated on seen data with RMSPE acucracy
+
